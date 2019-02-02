@@ -96,7 +96,7 @@ def plot_daily_BG(df, date_to_plot, ax):
     t = [datetime.time(hour=4*x) for x in range(6)]
     t.append(datetime.time(hour=23, minute=59))
     ax.set_xticks(t)
-    #bg.add_daily_scatter(df, date_to_plot,  ax)
+    #add_daily_scatter(df, date_to_plot,  ax)
     
 def lastWday(adate, w):
     MON, TUE, WED, THU, FRI, SAT, SUN = range(7)
@@ -174,58 +174,55 @@ def plot_long_term_BG(df, startdate, enddate):
     return ax
 	
 def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5):
-    """show colourmap and provide basis for extracting stats on separate hypoglycaemic episodes"""
-    sample_df = df.loc[(df['date'] >= startdate) & (df['date'] <= enddate)];
-    #print(sample_df.head())
+	"""show colourmap and provide basis for extracting stats on separate hypoglycaemic episodes"""
+	sample_df = df.loc[(df['date'] >= startdate) & (df['date'] <= enddate)];
 
-    # ensure even sampling
-    t = sample_df.index
-    r = pd.date_range(t.min(), t.max(), freq='30S')
-    interp_df = sample_df.reindex(t.union(r)).interpolate('index')
-    
-    # binarise hypos and label each distinct hypo event
-    mask = (interp_df['BG, mmoll-1'] < hypo_max_bg).values
-    lbl, nfeat = im_meas.label((mask).astype(int))
-    o = im_meas.find_objects(lbl)
-    hypo_starts_t = np.asarray([interp_df.index[x[0].start].time() for x in o])
-    hypo_starts_dt = [interp_df.index[x[0].start] for x in o]
-    #durations = [minus_time(interp_df.index[x[0].stop].time(), interp_df.index[x[0].start].time()) for x in o]
-    #print([d.total_seconds() for d in durations])
-    
-    days = interp_df['date'].unique()
-    days = np.unique(interp_df.index.date)
-    if enddate==datetime.date.today():
-        days = days[1:-1]
-    hypo_arr = np.zeros((len(days), (2*60*24)))
+	# ensure even sampling
+	t = sample_df.index
+	r = pd.date_range(t.min(), t.max(), freq='30S')
+	interp_df = sample_df.reindex(r).interpolate('index')
 
-    for didx, day in enumerate(days):
-        daily_BG = interp_df.loc[interp_df.index.date == day]['BG, mmoll-1']
-        hypo_arr[didx, :] = daily_BG
+	# binarise hypos and label each distinct hypo event
+	mask = (interp_df['BG, mmoll-1'] < hypo_max_bg).values
+	lbl, nfeat = im_meas.label((mask).astype(int))
+	o = im_meas.find_objects(lbl)
+	hypo_starts_t = np.asarray([interp_df.index[x[0].start].time() for x in o])
+	hypo_starts_dt = [interp_df.index[x[0].start] for x in o]
+	#durations = [minus_time(interp_df.index[x[0].stop].time(), interp_df.index[x[0].start].time()) for x in o]
+	#print([d.total_seconds() for d in durations])
 
-    hypo_arr = np.ma.masked_where(hypo_arr>hypo_max_bg, hypo_arr)
-    
-    fig, ax = plt.subplots(1,1, figsize=(10,10))
-    cbdum = ax.imshow(hypo_arr, aspect='auto', cmap='Reds_r', clim=(2.0,3.5), interpolation=None)
-    fig.subplots_adjust(top=0.9, right=0.9, hspace=0.1);
-    cax = fig.add_axes([0.95, ax.get_position().y0, 0.03, ax.get_position().y1 - ax.get_position().y0])
-    fig.colorbar(cbdum, cax=cax);
+	days = np.unique(interp_df.index.date)
+	zero = datetime.datetime(1990, 1, 1, 0, 0, 0).time();
+	start_index = math.floor(minus_time(interp_df.iloc[0]['time'], zero).total_seconds()/30);
+	hypo_arr = 10 * np.ones((len(days) * (2*60*24)))
+	vals = interp_df['BG, mmoll-1'].values;
+	hypo_arr[start_index:start_index+len(interp_df['BG, mmoll-1'].values)] = vals;
+	hypo_arr = hypo_arr.reshape((len(days), (2*60*24)));
 
-    t = [x * 4 * 2 * 60 for x in range(6)]
-    d = [x * 4 for x in range(int(len(days)/4))]
-    d.append(hypo_arr.shape[0]-1)
-    ax.set_xticks(t)
-    ax.set_yticks(d)
-    tlbl = [datetime.time(hour= int(math.floor(tx / (2 * 60))), minute=0) for tx in t]
-    dlbl = [x.strftime("%Y-%b-%d") for x in days[d]]
-    ax.set_xticklabels(tlbl)
-    ax.set_xlabel("Time of day")
-    ax.set_yticklabels(dlbl)
-    ax.set_ylabel("Date")
-    ax.set_title(startdate.strftime("Hypoglycaemic episodes in period %b %d, %Y - " + enddate.strftime("%b %d, %Y")))
-    cax.set_ylabel("BG, mmoll-1")
-    plt.show()
-    
-    return ax
+	hypo_arr = np.ma.masked_where(hypo_arr>hypo_max_bg, hypo_arr)
+
+	fig, ax = plt.subplots(1,1, figsize=(10,10))
+	cbdum = ax.imshow(hypo_arr, aspect='auto', cmap='Reds_r', clim=(2.0,3.5), interpolation=None)
+	fig.subplots_adjust(top=0.9, right=0.9, hspace=0.1);
+	cax = fig.add_axes([0.95, ax.get_position().y0, 0.03, ax.get_position().y1 - ax.get_position().y0])
+	fig.colorbar(cbdum, cax=cax);
+
+	t = [x * 4 * 2 * 60 for x in range(6)]
+	d = [x * 4 for x in range(int(len(days)/4))]
+	d.append(hypo_arr.shape[0]-1)
+	ax.set_xticks(t)
+	ax.set_yticks(d)
+	tlbl = [datetime.time(hour= int(math.floor(tx / (2 * 60))), minute=0) for tx in t]
+	dlbl = [x.strftime("%Y-%b-%d") for x in days[d]]
+	ax.set_xticklabels(tlbl)
+	ax.set_xlabel("Time of day")
+	ax.set_yticklabels(dlbl)
+	ax.set_ylabel("Date")
+	ax.set_title(startdate.strftime("Hypoglycaemic episodes in period %b %d, %Y - " + enddate.strftime("%b %d, %Y")))
+	cax.set_ylabel("BG, mmoll-1")
+	plt.show()
+
+	return ax
 
 	
 def percentageTimeInTarget(df, startdate, enddate, time_band_target_list):
