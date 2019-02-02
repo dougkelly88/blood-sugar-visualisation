@@ -189,7 +189,7 @@ def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5):
     o = im_meas.find_objects(lbl)
     hypo_starts_t = np.asarray([interp_df.index[x[0].start].time() for x in o])
     hypo_starts_dt = [interp_df.index[x[0].start] for x in o]
-    durations = [minus_time(interp_df.index[x[0].stop].time(), interp_df.index[x[0].start].time()) for x in o]
+    #durations = [minus_time(interp_df.index[x[0].stop].time(), interp_df.index[x[0].start].time()) for x in o]
     #print([d.total_seconds() for d in durations])
     
     days = interp_df['date'].unique()
