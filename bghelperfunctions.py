@@ -7,6 +7,8 @@ import math
 import scipy.ndimage.measurements as im_meas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+_interp_s = 30;
+
 class TimeBandTargets(object):
     """object to define the times and BG values for target readings, and to store the percentage times within targets"""
     def __init__(self, 
@@ -103,9 +105,7 @@ def lastWday(adate, w):
     """Mon:w=0, Sun:w=6"""
     delta = (adate.weekday() + 6 - w) % 7 + 1
     return adate - datetime.timedelta(days=delta)
-    
-
-    
+       
 def roundTimeToLastXMinutes(tm, X):
     tm = datetime.datetime.combine(datetime.date.today(), tm)
     tm = tm - datetime.timedelta(minutes=tm.minute % X,
@@ -113,65 +113,6 @@ def roundTimeToLastXMinutes(tm, X):
                              microseconds=tm.microsecond)
     tm = datetime.time(hour=tm.hour, minute=tm.minute)
     return tm
-
-def rollingFilterTimeSeries(series_groupby, filt_half_size_mins, filter_type, q=0.5):
-    """ Apply a 2 * filt_half_size_mins minute median filter to a pandas series indexed by time. 
-    N.B. endpoints are repeated to extend boundaries"""
-    if filter_type == 'mean':
-        x = series_groupby.mean()
-    elif filter_type == 'median':
-        x = series_groupby.median()
-    elif filter_type == 'quantile':
-        x = series_groupby.quantile(q)
-    y = x.copy()
-    for idx in range(len(x)):
-        low_tidx = (datetime.datetime.combine(datetime.date.today(), x.index[idx]) - datetime.timedelta(minutes=filt_half_size_mins)).time()
-        high_tidx = (datetime.datetime.combine(datetime.date.today(), x.index[idx]) + datetime.timedelta(minutes=filt_half_size_mins)).time()
-        if (low_tidx < high_tidx):
-            if filter_type == 'median':
-                y.iloc[idx] = x[(x.index >= low_tidx) & (x.index <= high_tidx)].median()
-            elif filter_type == "mean":
-                y.iloc[idx] = x[(x.index >= low_tidx) & (x.index <= high_tidx)].mean()
-            elif filter_type == "quantile":
-                y.iloc[idx] = x[(x.index >= low_tidx) & (x.index <= high_tidx)].quantile(q)
-        else:
-            if filter_type == 'median':
-                y.iloc[idx] = x[(x.index >= low_tidx) | (x.index <= high_tidx)].median()
-            elif filter_type == 'mean':
-                y.iloc[idx] = x[(x.index >= low_tidx) | (x.index <= high_tidx)].mean()
-            elif filter_type == "quantile":
-                y.iloc[idx] = x[(x.index >= low_tidx) | (x.index <= high_tidx)].quantile(q)
-    return y
-	
-	
-def test(instring):
-	print("test OK")
-	print(instring)
-	
-	
-def plot_long_term_BG(df, startdate, enddate):
-    """plot (rolling) median BG between two dates, along with 25-75 percentile range"""
-    sample_df = df.loc[(df['date'] > startdate) & (df['date'] < enddate)]
-    groupbytime = sample_df.groupby('time')['BG, mmoll-1']
-    fig, ax = plt.subplots(1,1)
-    ax.axhspan(2.0, 3.5, alpha=0.25, color='r')
-    ax.axhspan(12.0, 18.0, alpha=0.25, color='r')
-    ax.axhspan(8.0, 12.0, alpha=0.25, color='orange')
-    bgplt = rollingFilterTimeSeries(groupbytime, 60, 'median').plot(ax=ax, label='Median BG')
-    filt75 = rollingFilterTimeSeries(groupbytime, 60, 'quantile', q=0.75)
-    filt25 = rollingFilterTimeSeries(groupbytime, 60, 'quantile', q=0.25)
-    
-    ax.fill_between(filt75.index, filt25, filt75, alpha=0.25, color='gray', label='25-75% quantile')
-    ax.legend()
-    ax.set_ylabel('BG, mmoll-1')
-    ax.set_xlabel('Time')
-    ax.set_ylim((2.0, 18.0))
-    ax.set_xlim((datetime.time(hour=0), datetime.time(hour=23, minute=59)))
-    t = [datetime.time(hour=4*x) for x in range(6)]
-    t.append(datetime.time(hour=23, minute=59))
-    ax.set_xticks(t)
-    ax.set_title(startdate.strftime("Median BG in period %b %d, %Y - " + enddate.strftime("%b %d, %Y"))) 
-    return ax
 	
 def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5):
 	"""show colourmap and provide basis for extracting stats on separate hypoglycaemic episodes"""
@@ -179,7 +120,7 @@ def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5):
 
 	# ensure even sampling
 	t = sample_df.index
-	r = pd.date_range(t.min(), t.max(), freq='30S')
+	r = pd.date_range(t.min(), t.max(), freq='{}S'.format(_interp_s))
 	interp_df = sample_df.reindex(r).interpolate('index')
 
 	# binarise hypos and label each distinct hypo event
@@ -224,7 +165,6 @@ def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5):
 
 	return ax
 
-	
 def percentageTimeInTarget(df, startdate, enddate, time_band_target_list):
     """plot % time below/in/above targets, using time-banded targets object"""
     sample_df = df.loc[(df['date'] >= startdate) & (df['date'] <= enddate)]
@@ -237,7 +177,7 @@ def percentageTimeInTarget(df, startdate, enddate, time_band_target_list):
         sub_sample_df = sample_df.loc[(sample_df['time'] >= band_start_t) & (sample_df['time'] <= band_end_t)]['BG, mmoll-1']
         
         t = sub_sample_df.index
-        r = pd.date_range(t.min(), t.max(), freq='30S')
+        r = pd.date_range(t.min(), t.max(), freq='{}S'.format(_interp_s))
         interp_df = sub_sample_df.reindex(t.union(r)).interpolate('index')
         
         time_band_target_list[tidx].percentage_below_target = np.round(100.0 * (interp_df < tb_targets[0]).sum() / interp_df.count(),1)
@@ -297,3 +237,58 @@ def percentageTimeInTarget(df, startdate, enddate, time_band_target_list):
                              clip_on=True)
                 labels.append(label)
     return time_band_target_list;
+	
+def rolling_averages(series_groupby, filt_type='median', filt_half_size_mins=60, deltat_seconds=30, q=0.5):
+	if filt_type=='median':
+		x = series_groupby.median();
+	elif filt_type=='mean':
+		x = series_groupby.mean();
+	elif filt_type=='quantile':
+		x = series_groupby.quantile(q);
+	t = x.index;
+	out = np.zeros((2 * int(filt_half_size_mins * (60/deltat_seconds))+1, len(x)));
+	for idx in range(out.shape[0]):
+		out[idx] = np.roll(x.values, idx - int(filt_half_size_mins * (60/deltat_seconds)));
+	if filt_type=='median':
+		return t, np.median(out, axis=0);
+	elif filt_type=='quantile':
+		return t, np.quantile(out, q, axis=0);
+	elif filt_type=='mean':
+		return t, np.mean(out, axis=0);
+
+def plot_long_term_BG(df, startdate, enddate, time_smoothing_s=600):
+	"""plot (rolling) median BG between two dates, along with 25-75 percentile range"""
+	sample_df = df.loc[(df['date'] > startdate) & (df['date'] < enddate)]
+	interp_df = sample_df.resample('{}S'.format(time_smoothing_s)).mean()
+	interp_df['time'] = interp_df.index.time;
+	groupbytime = interp_df.groupby('time')['BG, mmoll-1']
+	fig, ax = plt.subplots(1,1)
+	ax.axhspan(2.0, 3.5, alpha=0.25, color='r')
+	ax.axhspan(12.0, 18.0, alpha=0.25, color='r')
+	ax.axhspan(8.0, 12.0, alpha=0.25, color='orange')
+	_, med = rolling_averages(groupbytime, 
+								filt_half_size_mins=60, 
+								filt_type='median', 
+								deltat_seconds=time_smoothing_s);
+	_, lq = rolling_averages(groupbytime, 
+								filt_half_size_mins=60, 
+								filt_type='quantile',
+								deltat_seconds=time_smoothing_s, 
+								q=0.25);
+	t, uq = rolling_averages(groupbytime, 
+								filt_half_size_mins=60, 
+								filt_type='quantile', 
+								deltat_seconds=time_smoothing_s, 
+								q=0.75);
+	bgplt = ax.plot(t, med, label='Median');
+	ax.fill_between(t, lq, uq, alpha=0.25, color='gray', label='25-75% quantile')
+	ax.legend()
+	ax.set_ylabel('BG, mmoll-1')
+	ax.set_xlabel('Time')
+	ax.set_ylim((2.0, 18.0))
+	ax.set_xlim((datetime.time(hour=0), datetime.time(hour=23, minute=59)))
+	t = [datetime.time(hour=4*x) for x in range(6)]
+	t.append(datetime.time(hour=23, minute=59))
+	ax.set_xticks(t)
+	ax.set_title(startdate.strftime("Median BG in period %b %d, %Y - " + enddate.strftime("%b %d, %Y"))) 
+	return ax;
