@@ -259,7 +259,13 @@ def rolling_averages(series_groupby, filt_type='median', filt_half_size_mins=60,
 def plot_long_term_BG(df, startdate, enddate, time_smoothing_s=600):
 	"""plot (rolling) median BG between two dates, along with 25-75 percentile range"""
 	sample_df = df.loc[(df['date'] > startdate) & (df['date'] < enddate)]
-	interp_df = sample_df.resample('{}S'.format(time_smoothing_s)).mean()
+	if minus_time(sample_df.iloc[0]['time'], 
+						sample_df.iloc[1]['time']).total_seconds() > time_smoothing_s:
+		interp_df = sample_df.reindex(pd.date_range(sample_df.index.min(), 
+													sample_df.index.max(), 
+													freq='{}S'.format(time_smoothing_s))).interpolate('index');
+	else:
+		interp_df = sample_df.resample('{}S'.format(time_smoothing_s)).mean();
 	interp_df['time'] = interp_df.index.time;
 	groupbytime = interp_df.groupby('time')['BG, mmoll-1']
 	fig, ax = plt.subplots(1,1)
