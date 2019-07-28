@@ -76,12 +76,12 @@ def add_daily_scatter(df, date_to_plot, ax):
     latest_available_time = day_df['time'].iloc[0]
     meal_variability_mins = meal_variability_mins[meal_times < latest_available_time].tolist()
     meal_times = meal_times[meal_times < latest_available_time].tolist()
-    
+
     ts = [mealtime(t, r) for (t, r) in zip(meal_times, meal_variability_mins)]
-    closest_ts = [day_df['time'][((day_df['time'].apply(lambda x: minus_time(x,t))).abs().argsort()[:1])] for t in ts]
-    mus = [day_df.loc[day_df['time'] == t]['BG, mmoll-1'] for t in closest_ts]
-    readings = [np.around(np.random.normal(mu, 0.05)) for mu in mus]
-    ax.scatter(closest_ts, readings)
+    closest_ts = [day_df['datetime'][((day_df['time'].apply(lambda x: minus_time(x,t))).abs().argsort()[:1])] for t in ts]
+    mus = [day_df['BG, mmoll-1'].get(t).values[0] for t in closest_ts]
+    readings = [np.around(np.random.normal(mu, 0.25), 1) for mu in mus]
+    ax.scatter([t.index.time[0] for t in closest_ts], readings)
     
 
 def plot_daily_BG(df, date_to_plot, ax):
@@ -142,7 +142,7 @@ def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5):
 
 	hypo_arr = np.ma.masked_where(hypo_arr>hypo_max_bg, hypo_arr)
 
-	fig, ax = plt.subplots(1,1, figsize=(10,10))
+	fig, ax = plt.subplots(1,1)
 	cbdum = ax.imshow(hypo_arr, aspect='auto', cmap='Reds_r', clim=(2.0,3.5), interpolation=None)
 	fig.subplots_adjust(top=0.9, right=0.9, hspace=0.1);
 	cax = fig.add_axes([0.95, ax.get_position().y0, 0.03, ax.get_position().y1 - ax.get_position().y0])
@@ -231,7 +231,7 @@ def percentageTimeInTarget(df, startdate, enddate, time_band_target_list):
                 yloc = rect.get_y() + rect.get_height()/2.0
                 xloc = rect.get_x() + rect.get_width()/2.0
 
-                pc_str = str.format("{0} %", pc_lbls[cidx])
+                pc_str = str.format("{0}", pc_lbls[cidx])
                 label = ax.text(xloc, yloc, pc_str, horizontalalignment='center',
                              verticalalignment='center', color='w', weight='bold',
                              clip_on=True)
