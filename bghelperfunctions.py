@@ -118,7 +118,7 @@ def roundTimeToLastXMinutes(tm, X):
     tm = datetime.time(hour=tm.hour, minute=tm.minute)
     return tm
 	
-def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5):
+def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5, outpath=None):
 	"""show colourmap and provide basis for extracting stats on separate hypoglycaemic episodes"""
 	sample_df = df.loc[(df['date'] >= startdate) & (df['date'] <= enddate)];
 
@@ -165,11 +165,13 @@ def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5):
 	ax.set_ylabel("Date")
 	ax.set_title(startdate.strftime("Hypoglycaemic episodes in period %b %d, %Y - " + enddate.strftime("%b %d, %Y")))
 	cax.set_ylabel("BG, mmoll-1")
+	if outpath:
+		plt.savefig(outpath, dpi=600)
 	plt.show()
 
 	return ax
 
-def percentageTimeInTarget(df, startdate, enddate, time_band_target_list):
+def percentageTimeInTarget(df, startdate, enddate, time_band_target_list, outpath=None):
     """plot % time below/in/above targets, using time-banded targets object"""
     sample_df = df.loc[(df['date'] >= startdate) & (df['date'] <= enddate)]
     
@@ -240,6 +242,8 @@ def percentageTimeInTarget(df, startdate, enddate, time_band_target_list):
                              verticalalignment='center', color='w', weight='bold',
                              clip_on=True)
                 labels.append(label)
+    if outpath:
+        plt.savefig(outpath, dpi=600)
     return time_band_target_list;
 	
 def rolling_averages(series_groupby, filt_type='median', filt_half_size_mins=60, deltat_seconds=30, q=0.5):
@@ -260,7 +264,7 @@ def rolling_averages(series_groupby, filt_type='median', filt_half_size_mins=60,
 	elif filt_type=='mean':
 		return t, np.mean(out, axis=0);
 
-def plot_long_term_BG(df, startdate, enddate, time_smoothing_s=600):
+def plot_long_term_BG(df, startdate, enddate, time_smoothing_s=600, outpath=None):
 	"""plot (rolling) median BG between two dates, along with 25-75 percentile range"""
 	sample_df = df.loc[(df['date'] > startdate) & (df['date'] < enddate)]
 	if minus_time(sample_df.iloc[0]['time'], 
@@ -311,5 +315,7 @@ def plot_long_term_BG(df, startdate, enddate, time_smoothing_s=600):
 	t = [datetime.time(hour=4*x) for x in range(6)]
 	t.append(datetime.time(hour=23, minute=59))
 	ax.set_xticks(t)
-	ax.set_title(startdate.strftime("Median BG in period %b %d, %Y - " + enddate.strftime("%b %d, %Y"))) 
+	ax.set_title(startdate.strftime("Median BG in period %b %d, %Y - " + enddate.strftime("%b %d, %Y")))
+	if outpath:
+		plt.savefig(outpath, dpi=600)
 	return ax;
