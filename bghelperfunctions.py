@@ -290,7 +290,18 @@ def plot_long_term_BG(df, startdate, enddate, time_smoothing_s=600):
 								filt_type='quantile', 
 								deltat_seconds=time_smoothing_s, 
 								q=0.75);
+	_, q10 = rolling_averages(groupbytime, 
+								filt_half_size_mins=60, 
+								filt_type='quantile', 
+								deltat_seconds=time_smoothing_s, 
+								q=0.1);								
+	_, q90 = rolling_averages(groupbytime, 
+								filt_half_size_mins=60, 
+								filt_type='quantile', 
+								deltat_seconds=time_smoothing_s, 
+								q=0.9);
 	bgplt = ax.plot(t, med, label='Median');
+	ax.fill_between(t, q10, q90, alpha=0.1, color='gray', label='10-90% quantile')
 	ax.fill_between(t, lq, uq, alpha=0.25, color='gray', label='25-75% quantile')
 	ax.legend()
 	ax.set_ylabel('BG, mmoll-1')
