@@ -67,21 +67,25 @@ def mealtime(time_in, variability_in_mins):
     
 def add_daily_scatter(df, date_to_plot, ax):
     """for approximate comparison of information with/without CGM"""
-    day_df = df.loc[df['date'] == date_to_plot]
-    meal_times = np.asarray([datetime.time(hour=8, minute=0), 
-                  datetime.time(hour=12, minute=30), 
-                  datetime.time(hour=18, minute=30), 
-                  datetime.time(hour=23, minute=0)])
-    meal_variability_mins = np.asarray([30, 60, 90, 120])
-    latest_available_time = day_df['time'].iloc[0]
-    meal_variability_mins = meal_variability_mins[meal_times < latest_available_time].tolist()
-    meal_times = meal_times[meal_times < latest_available_time].tolist()
+    if 'Finger BG, mmoll-1' in df.columns:
+        finger_df = df[(df['date']==date_to_plot) & (df['Finger BG, mmoll-1'].notnull())]
+        ax.scatter(finger_df['time'].tolist(), finger_df['Finger BG, mmoll-1'].tolist())
+    else:
+        day_df = df.loc[df['date'] == date_to_plot]
+        meal_times = np.asarray([datetime.time(hour=8, minute=0), 
+					  datetime.time(hour=12, minute=30), 
+					  datetime.time(hour=18, minute=30), 
+					  datetime.time(hour=23, minute=0)])
+        meal_variability_mins = np.asarray([30, 60, 90, 120])
+        latest_available_time = day_df['time'].iloc[0]
+        meal_variability_mins = meal_variability_mins[meal_times < latest_available_time].tolist()
+        meal_times = meal_times[meal_times < latest_available_time].tolist()
 
-    ts = [mealtime(t, r) for (t, r) in zip(meal_times, meal_variability_mins)]
-    closest_ts = [day_df['datetime'][((day_df['time'].apply(lambda x: minus_time(x,t))).abs().argsort()[:1])] for t in ts]
-    mus = [day_df['BG, mmoll-1'].get(t).values[0] for t in closest_ts]
-    readings = [np.around(np.random.normal(mu, 0.25), 1) for mu in mus]
-    ax.scatter([t.index.time[0] for t in closest_ts], readings)
+        ts = [mealtime(t, r) for (t, r) in zip(meal_times, meal_variability_mins)]
+        closest_ts = [day_df['datetime'][((day_df['time'].apply(lambda x: minus_time(x,t))).abs().argsort()[:1])] for t in ts]
+        mus = [day_df['BG, mmoll-1'].get(t).values[0] for t in closest_ts]
+        readings = [np.around(np.random.normal(mu, 0.25), 1) for mu in mus]
+        ax.scatter([t.index.time[0] for t in closest_ts], readings)
     
 
 def plot_daily_BG(df, date_to_plot, ax):
