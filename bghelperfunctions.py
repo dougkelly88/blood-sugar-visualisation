@@ -168,7 +168,7 @@ def plot_hypos(df, startdate, enddate=datetime.date.today(), hypo_max_bg=3.5, ou
 	ax.set_title(startdate.strftime("Hypoglycaemic episodes in period %b %d, %Y - " + enddate.strftime("%b %d, %Y")))
 	cax.set_ylabel("BG, mmoll-1")
 	if outpath:
-		plt.savefig(outpath + '/{}hypos.png'.format(desc_str), dpi=600)
+		plt.savefig(outpath + '/{}hypos.png'.format(desc_str), dpi=600, bbox_inches='tight')
 		if document:
 			document.add_page_break()
 			document.add_heading("{}hypos".format(desc_str), level=2)
@@ -249,7 +249,7 @@ def percentageTimeInTarget(df, startdate, enddate, time_band_target_list, outpat
                              clip_on=True)
                 labels.append(label)
     if outpath:
-        plt.savefig(outpath + '/{}targets.png'.format(desc_str), dpi=600)
+        plt.savefig(outpath + '/{}targets.png'.format(desc_str), dpi=600, bbox_inches='tight')
         if document:
             document.add_page_break()
             document.add_heading("{}targets".format(desc_str), level=2)
@@ -327,9 +327,9 @@ def plot_long_term_BG(df, startdate, enddate, time_smoothing_s=600, outpath=None
 	ax.set_xticks(t)
 	ax.set_title(startdate.strftime("Median BG in period %b %d, %Y - " + enddate.strftime("%b %d, %Y")))
 	if outpath:
-		plt.savefig(outpath + '/{}quantiles.png'.format(desc_str), dpi=600)
+		plt.savefig(outpath + '/{}daily patterns.png'.format(desc_str), dpi=600, bbox_inches='tight')
 		if document:
 			document.add_page_break()
-			document.add_heading("{}quantiles".format(desc_str), level=2)
-			document.add_picture(outpath + '/{}quantiles.png'.format(desc_str), width=Inches(6.2))
+			document.add_heading("{}daily patterns".format(desc_str), level=2)
+			document.add_picture(outpath + '/{}daily patterns.png'.format(desc_str), width=Inches(6.2))
 	return ax;
